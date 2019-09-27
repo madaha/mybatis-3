@@ -31,13 +31,15 @@ import org.apache.ibatis.reflection.MetaObject;
 import org.apache.ibatis.session.ResultHandler;
 import org.apache.ibatis.session.RowBounds;
 import org.apache.ibatis.transaction.Transaction;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * @author Clinton Begin
  * @author Eduardo Macarron
  */
 public class CachingExecutor implements Executor {
-
+  private static Logger logger = LoggerFactory.getLogger(CachingExecutor.class);
   private final Executor delegate;
   private final TransactionalCacheManager tcm = new TransactionalCacheManager();
 
@@ -78,8 +80,15 @@ public class CachingExecutor implements Executor {
 
   @Override
   public <E> List<E> query(MappedStatement ms, Object parameterObject, RowBounds rowBounds, ResultHandler resultHandler) throws SQLException {
+    long startTime = System.currentTimeMillis();
     BoundSql boundSql = ms.getBoundSql(parameterObject);
+    long endTime = System.currentTimeMillis();
+    logger.info("getBoundSql time = {}", endTime - startTime);
+
+    startTime = System.currentTimeMillis();
     CacheKey key = createCacheKey(ms, parameterObject, rowBounds, boundSql);
+    endTime = System.currentTimeMillis();
+    logger.info("createCacheKey time = {}", endTime - startTime);
     return query(ms, parameterObject, rowBounds, resultHandler, key, boundSql);
   }
 
@@ -97,6 +106,7 @@ public class CachingExecutor implements Executor {
       flushCacheIfRequired(ms);
       if (ms.isUseCache() && resultHandler == null) {
         ensureNoOutParams(ms, boundSql);
+
         @SuppressWarnings("unchecked")
         List<E> list = (List<E>) tcm.getObject(cache, key);
         if (list == null) {
@@ -106,7 +116,12 @@ public class CachingExecutor implements Executor {
         return list;
       }
     }
-    return delegate.query(ms, parameterObject, rowBounds, resultHandler, key, boundSql);
+
+    long startTime = System.currentTimeMillis();
+    List<E> list = delegate.query(ms, parameterObject, rowBounds, resultHandler, key, boundSql);
+    long endTime = System.currentTimeMillis();
+    logger.info("delegate.query time = {}", endTime - startTime);
+    return list;
   }
 
   @Override

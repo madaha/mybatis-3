@@ -1,5 +1,5 @@
 /**
- *    Copyright 2009-2018 the original author or authors.
+ *    Copyright 2009-2019 the original author or authors.
  *
  *    Licensed under the Apache License, Version 2.0 (the "License");
  *    you may not use this file except in compliance with the License.
@@ -31,12 +31,14 @@ import org.apache.ibatis.mapping.MappedStatement;
 import org.apache.ibatis.mapping.ResultSetType;
 import org.apache.ibatis.session.ResultHandler;
 import org.apache.ibatis.session.RowBounds;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * @author Clinton Begin
  */
 public class PreparedStatementHandler extends BaseStatementHandler {
-
+  private static Logger logger = LoggerFactory.getLogger(PreparedStatementHandler.class);
   public PreparedStatementHandler(Executor executor, MappedStatement mappedStatement, Object parameter, RowBounds rowBounds, ResultHandler resultHandler, BoundSql boundSql) {
     super(executor, mappedStatement, parameter, rowBounds, resultHandler, boundSql);
   }
@@ -60,9 +62,17 @@ public class PreparedStatementHandler extends BaseStatementHandler {
 
   @Override
   public <E> List<E> query(Statement statement, ResultHandler resultHandler) throws SQLException {
+    long startTime = System.currentTimeMillis();
     PreparedStatement ps = (PreparedStatement) statement;
     ps.execute();
-    return resultSetHandler.handleResultSets(ps);
+    long endTime = System.currentTimeMillis();
+    logger.info("preparedStatementHandler execute time = {}", endTime - startTime);
+
+    startTime = System.currentTimeMillis();
+    List<E> list = resultSetHandler.handleResultSets(ps);
+    endTime = System.currentTimeMillis();
+    logger.info("preparedStatementHandler handleResultSets time = {}", endTime - startTime);
+    return list;
   }
 
   @Override

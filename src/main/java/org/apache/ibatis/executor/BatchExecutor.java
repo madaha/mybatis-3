@@ -34,12 +34,14 @@ import org.apache.ibatis.session.Configuration;
 import org.apache.ibatis.session.ResultHandler;
 import org.apache.ibatis.session.RowBounds;
 import org.apache.ibatis.transaction.Transaction;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * @author Jeff Butler
  */
 public class BatchExecutor extends BaseExecutor {
-
+  private static Logger logger = LoggerFactory.getLogger(BatchExecutor.class);
   public static final int BATCH_UPDATE_RETURN_VALUE = Integer.MIN_VALUE + 1002;
 
   private final List<Statement> statementList = new ArrayList<>();
@@ -82,14 +84,32 @@ public class BatchExecutor extends BaseExecutor {
   public <E> List<E> doQuery(MappedStatement ms, Object parameterObject, RowBounds rowBounds, ResultHandler resultHandler, BoundSql boundSql)
       throws SQLException {
     Statement stmt = null;
+    long startTime = 0;
+    long endTime = 0;
     try {
+      startTime = System.currentTimeMillis();
       flushStatements();
+      endTime = System.currentTimeMillis();
+      logger.info("doQuery flushStatements time = {}", endTime - startTime);
       Configuration configuration = ms.getConfiguration();
+      endTime = System.currentTimeMillis();
+      logger.info("doQuery getConfiguration time = {}", endTime - startTime);
       StatementHandler handler = configuration.newStatementHandler(wrapper, ms, parameterObject, rowBounds, resultHandler, boundSql);
+      endTime = System.currentTimeMillis();
+      logger.info("doQuery newStatementHandler time = {}", endTime - startTime);
       Connection connection = getConnection(ms.getStatementLog());
+      endTime = System.currentTimeMillis();
+      logger.info("doQuery getConnection time = {}", endTime - startTime);
       stmt = handler.prepare(connection, transaction.getTimeout());
+      endTime = System.currentTimeMillis();
+      logger.info("doQuery prepare time = {}", endTime - startTime);
       handler.parameterize(stmt);
-      return handler.query(stmt, resultHandler);
+      endTime = System.currentTimeMillis();
+      logger.info("doQuery parameterize time = {}", endTime - startTime);
+      List<E> list = handler.query(stmt, resultHandler);
+      endTime = System.currentTimeMillis();
+      logger.info("doQuery query time = {}", endTime - startTime);
+      return list;
     } finally {
       closeStatement(stmt);
     }

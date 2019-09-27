@@ -38,6 +38,8 @@ import org.apache.ibatis.session.Configuration;
 import org.apache.ibatis.session.ResultHandler;
 import org.apache.ibatis.session.RowBounds;
 import org.apache.ibatis.session.SqlSession;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * The default implementation for {@link SqlSession}.
@@ -46,7 +48,7 @@ import org.apache.ibatis.session.SqlSession;
  * @author Clinton Begin
  */
 public class DefaultSqlSession implements SqlSession {
-
+  private static Logger logger = LoggerFactory.getLogger(DefaultSqlSession.class);
   private final Configuration configuration;
   private final Executor executor;
 
@@ -144,7 +146,11 @@ public class DefaultSqlSession implements SqlSession {
   public <E> List<E> selectList(String statement, Object parameter, RowBounds rowBounds) {
     try {
       MappedStatement ms = configuration.getMappedStatement(statement);
-      return executor.query(ms, wrapCollection(parameter), rowBounds, Executor.NO_RESULT_HANDLER);
+      long startTime = System.currentTimeMillis();
+      List<E> list = executor.query(ms, wrapCollection(parameter), rowBounds, Executor.NO_RESULT_HANDLER);
+      long endTime = System.currentTimeMillis();
+      logger.info("executor.query time = {}", endTime - startTime);
+      return list;
     } catch (Exception e) {
       throw ExceptionFactory.wrapException("Error querying database.  Cause: " + e, e);
     } finally {
@@ -317,16 +323,24 @@ public class DefaultSqlSession implements SqlSession {
   }
 
   private Object wrapCollection(final Object object) {
+    long startTime;
+    long endTime;
     if (object instanceof Collection) {
+      startTime = System.currentTimeMillis();
       StrictMap<Object> map = new StrictMap<>();
       map.put("collection", object);
       if (object instanceof List) {
         map.put("list", object);
       }
+      endTime = System.currentTimeMillis();
+      logger.info("wrapCollection time = {}", endTime - startTime);
       return map;
     } else if (object != null && object.getClass().isArray()) {
+      startTime = System.currentTimeMillis();
       StrictMap<Object> map = new StrictMap<>();
       map.put("array", object);
+      endTime = System.currentTimeMillis();
+      logger.info("wrapCollection time = {}", endTime - startTime);
       return map;
     }
     return object;

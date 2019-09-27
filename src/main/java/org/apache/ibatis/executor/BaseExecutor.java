@@ -43,12 +43,14 @@ import org.apache.ibatis.session.ResultHandler;
 import org.apache.ibatis.session.RowBounds;
 import org.apache.ibatis.transaction.Transaction;
 import org.apache.ibatis.type.TypeHandlerRegistry;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * @author Clinton Begin
  */
 public abstract class BaseExecutor implements Executor {
-
+  private static Logger logger = LoggerFactory.getLogger(BaseExecutor.class);
   private static final Log log = LogFactory.getLog(BaseExecutor.class);
 
   protected Transaction transaction;
@@ -131,8 +133,13 @@ public abstract class BaseExecutor implements Executor {
 
   @Override
   public <E> List<E> query(MappedStatement ms, Object parameter, RowBounds rowBounds, ResultHandler resultHandler) throws SQLException {
+    long startTime = System.currentTimeMillis();
     BoundSql boundSql = ms.getBoundSql(parameter);
+    long endTime = System.currentTimeMillis();
+    logger.info("getBoundSql time = {}", endTime - startTime);
     CacheKey key = createCacheKey(ms, parameter, rowBounds, boundSql);
+    endTime = System.currentTimeMillis();
+    logger.info("createCacheKey time = {}", endTime - startTime);
     return query(ms, parameter, rowBounds, resultHandler, key, boundSql);
   }
 
@@ -146,6 +153,7 @@ public abstract class BaseExecutor implements Executor {
     if (queryStack == 0 && ms.isFlushCacheRequired()) {
       clearLocalCache();
     }
+
     List<E> list;
     try {
       queryStack++;
@@ -153,11 +161,15 @@ public abstract class BaseExecutor implements Executor {
       if (list != null) {
         handleLocallyCachedOutputParameters(ms, key, parameter, boundSql);
       } else {
+        long startTime = System.currentTimeMillis();
         list = queryFromDatabase(ms, parameter, rowBounds, resultHandler, key, boundSql);
+        long endTime = System.currentTimeMillis();
+        logger.info("queryFromDatabase time = {}", endTime - startTime);
       }
     } finally {
       queryStack--;
     }
+
     if (queryStack == 0) {
       for (DeferredLoad deferredLoad : deferredLoads) {
         deferredLoad.load();

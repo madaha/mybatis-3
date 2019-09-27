@@ -61,6 +61,8 @@ import org.apache.ibatis.session.RowBounds;
 import org.apache.ibatis.type.JdbcType;
 import org.apache.ibatis.type.TypeHandler;
 import org.apache.ibatis.type.TypeHandlerRegistry;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * @author Clinton Begin
@@ -69,7 +71,7 @@ import org.apache.ibatis.type.TypeHandlerRegistry;
  * @author Kazuki Shimizu
  */
 public class DefaultResultSetHandler implements ResultSetHandler {
-
+  private static Logger logger = LoggerFactory.getLogger(DefaultResultSetHandler.class);
   private static final Object DEFERRED = new Object();
 
   private final Executor executor;
@@ -183,6 +185,7 @@ public class DefaultResultSetHandler implements ResultSetHandler {
 
     final List<Object> multipleResults = new ArrayList<>();
 
+    long startTime = System.currentTimeMillis();
     int resultSetCount = 0;
     ResultSetWrapper rsw = getFirstResultSet(stmt);
 
@@ -196,7 +199,10 @@ public class DefaultResultSetHandler implements ResultSetHandler {
       cleanUpAfterHandlingResultSet();
       resultSetCount++;
     }
+    long endTime = System.currentTimeMillis();
+    logger.info("阶段一 time = {}", endTime - startTime);
 
+    startTime = System.currentTimeMillis();
     String[] resultSets = mappedStatement.getResultSets();
     if (resultSets != null) {
       while (rsw != null && resultSetCount < resultSets.length) {
@@ -211,6 +217,8 @@ public class DefaultResultSetHandler implements ResultSetHandler {
         resultSetCount++;
       }
     }
+    endTime = System.currentTimeMillis();
+    logger.info("阶段二 time = {}", endTime - startTime);
 
     return collapseSingleResultList(multipleResults);
   }

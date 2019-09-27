@@ -1,5 +1,5 @@
 /**
- *    Copyright 2009-2018 the original author or authors.
+ *    Copyright 2009-2019 the original author or authors.
  *
  *    Licensed under the Apache License, Version 2.0 (the "License");
  *    you may not use this file except in compliance with the License.
@@ -32,12 +32,14 @@ import org.apache.ibatis.session.Configuration;
 import org.apache.ibatis.session.ResultHandler;
 import org.apache.ibatis.session.RowBounds;
 import org.apache.ibatis.transaction.Transaction;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * @author Clinton Begin
  */
 public class ReuseExecutor extends BaseExecutor {
-
+  private static Logger logger = LoggerFactory.getLogger(ReuseExecutor.class);
   private final Map<String, Statement> statementMap = new HashMap<>();
 
   public ReuseExecutor(Configuration configuration, Transaction transaction) {
@@ -54,10 +56,20 @@ public class ReuseExecutor extends BaseExecutor {
 
   @Override
   public <E> List<E> doQuery(MappedStatement ms, Object parameter, RowBounds rowBounds, ResultHandler resultHandler, BoundSql boundSql) throws SQLException {
+    long startTime = System.currentTimeMillis();
     Configuration configuration = ms.getConfiguration();
+    long endTime = System.currentTimeMillis();
+    logger.info("reuseExecutor getConfiguration time = {}", endTime - startTime);
     StatementHandler handler = configuration.newStatementHandler(wrapper, ms, parameter, rowBounds, resultHandler, boundSql);
+    endTime = System.currentTimeMillis();
+    logger.info("reuseExecutor newStatementHandler time = {}", endTime - startTime);
     Statement stmt = prepareStatement(handler, ms.getStatementLog());
-    return handler.query(stmt, resultHandler);
+    endTime = System.currentTimeMillis();
+    logger.info("reuseExecutor prepareStatement time = {}", endTime - startTime);
+    List<E> list = handler.query(stmt, resultHandler);
+    endTime = System.currentTimeMillis();
+    logger.info("reuseExecutor handler.query time = {}", endTime - startTime);
+    return list;
   }
 
   @Override

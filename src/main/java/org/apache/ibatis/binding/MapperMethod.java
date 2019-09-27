@@ -37,6 +37,8 @@ import org.apache.ibatis.session.Configuration;
 import org.apache.ibatis.session.ResultHandler;
 import org.apache.ibatis.session.RowBounds;
 import org.apache.ibatis.session.SqlSession;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * @author Clinton Begin
@@ -45,6 +47,7 @@ import org.apache.ibatis.session.SqlSession;
  * @author Kazuki Shimizu
  */
 public class MapperMethod {
+  private static Logger logger = LoggerFactory.getLogger(MapperMethod.class);
 
   private final SqlCommand command;
   private final MethodSignature method;
@@ -73,6 +76,7 @@ public class MapperMethod {
         break;
       }
       case SELECT:
+        long startTime = System.currentTimeMillis();
         if (method.returnsVoid() && method.hasResultHandler()) {
           executeWithResultHandler(sqlSession, args);
           result = null;
@@ -90,6 +94,8 @@ public class MapperMethod {
             result = Optional.ofNullable(result);
           }
         }
+        long endTime = System.currentTimeMillis();
+        logger.info("select time = {}", endTime - startTime);
         break;
       case FLUSH:
         result = sqlSession.flushStatements();
@@ -140,12 +146,22 @@ public class MapperMethod {
   private <E> Object executeForMany(SqlSession sqlSession, Object[] args) {
     List<E> result;
     Object param = method.convertArgsToSqlCommandParam(args);
+    long startTime = 0;
+    long endTime = 0;
+
     if (method.hasRowBounds()) {
       RowBounds rowBounds = method.extractRowBounds(args);
+      startTime = System.currentTimeMillis();
       result = sqlSession.selectList(command.getName(), param, rowBounds);
+      endTime = System.currentTimeMillis();
+      logger.info("selectList time = {}", endTime - startTime);
     } else {
+      startTime = System.currentTimeMillis();
       result = sqlSession.selectList(command.getName(), param);
+      endTime = System.currentTimeMillis();
+      logger.info("selectList time = {}", endTime - startTime);
     }
+
     // issue #510 Collections & arrays support
     if (!method.getReturnType().isAssignableFrom(result.getClass())) {
       if (method.getReturnType().isArray()) {
@@ -306,7 +322,11 @@ public class MapperMethod {
     }
 
     public Object convertArgsToSqlCommandParam(Object[] args) {
-      return paramNameResolver.getNamedParams(args);
+      long startTime = System.currentTimeMillis();
+      Object obj = paramNameResolver.getNamedParams(args);
+      long endTime = System.currentTimeMillis();
+      logger.info("convertArgsToSqlCommandParam time = {}", endTime - startTime);
+      return obj;
     }
 
     public boolean hasRowBounds() {

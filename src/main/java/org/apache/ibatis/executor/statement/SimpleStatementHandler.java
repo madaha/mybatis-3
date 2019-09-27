@@ -1,5 +1,5 @@
 /**
- *    Copyright 2009-2018 the original author or authors.
+ *    Copyright 2009-2019 the original author or authors.
  *
  *    Licensed under the Apache License, Version 2.0 (the "License");
  *    you may not use this file except in compliance with the License.
@@ -31,12 +31,14 @@ import org.apache.ibatis.mapping.MappedStatement;
 import org.apache.ibatis.mapping.ResultSetType;
 import org.apache.ibatis.session.ResultHandler;
 import org.apache.ibatis.session.RowBounds;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * @author Clinton Begin
  */
 public class SimpleStatementHandler extends BaseStatementHandler {
-
+  private static Logger logger = LoggerFactory.getLogger(SimpleStatementHandler.class);
   public SimpleStatementHandler(Executor executor, MappedStatement mappedStatement, Object parameter, RowBounds rowBounds, ResultHandler resultHandler, BoundSql boundSql) {
     super(executor, mappedStatement, parameter, rowBounds, resultHandler, boundSql);
   }
@@ -70,9 +72,15 @@ public class SimpleStatementHandler extends BaseStatementHandler {
 
   @Override
   public <E> List<E> query(Statement statement, ResultHandler resultHandler) throws SQLException {
+    long startTime = System.currentTimeMillis();
     String sql = boundSql.getSql();
     statement.execute(sql);
-    return resultSetHandler.handleResultSets(statement);
+    long endTime = System.currentTimeMillis();
+    logger.info("simpleStatementHandler execute time = {}", endTime - startTime);
+    List<E> list = resultSetHandler.handleResultSets(statement);
+    endTime = System.currentTimeMillis();
+    logger.info("simpleStatementHandler handleResultSets time = {}", endTime - startTime);
+    return list;
   }
 
   @Override
